@@ -8,16 +8,16 @@ import { LinkedSlider } from "@/components/ui/linkedslider";
 import { Textarea } from "@/components/ui/textarea";
 import essay from "@/lib/essay";
 
-const DEFAULT_CHUNK_SIZE = 1024;
-const DEFAULT_CHUNK_OVERLAP = 20;
-const DEFAULT_TEMPERATURE = 0.1;
-const DEFAULT_TOP_P = 1;
-
 interface Character {
   name: string;
   description: string;
   personality: string;
 }
+
+const DEFAULT_CHUNK_SIZE = 1024;
+const DEFAULT_CHUNK_OVERLAP = 20;
+const DEFAULT_TEMPERATURE = 0.1;
+const DEFAULT_TOP_P = 1;
 
 export default function Home() {
   const answerId = useId();
@@ -26,7 +26,6 @@ export default function Home() {
   const [needsNewIndex, setNeedsNewIndex] = useState(true);
   const [buildingIndex, setBuildingIndex] = useState(false);
   const [extracting, setExtracting] = useState(false);
-  const [generating, setGenerating] = useState(false);
   const [nodesWithEmbedding, setNodesWithEmbedding] = useState([]);
   const [chunkSize, setChunkSize] = useState(DEFAULT_CHUNK_SIZE.toString());
   const [chunkOverlap, setChunkOverlap] = useState(
@@ -37,8 +36,6 @@ export default function Home() {
   );
   const [topP, setTopP] = useState(DEFAULT_TOP_P.toString());
   const [answer, setAnswer] = useState("");
-  const [extractedCharacters, setExtractedCharacters] = useState<Character[]>([]);
-  const [showStoryButton, setShowStoryButton] = useState(false);
 
   const formatCharactersAsTable = (characters: Character[]): string => {
     if (!characters || characters.length === 0) return "No characters found";
@@ -111,7 +108,6 @@ export default function Home() {
                     const fileContent = event.target?.result as string;
                     setText(fileContent);
                     setNeedsNewIndex(true);
-                    setShowStoryButton(false);
                   };
                   if (file.type != "text/plain") {
                     console.error(`${file.type} parsing not implemented`);
@@ -140,7 +136,6 @@ export default function Home() {
             setAnswer("Building index...");
             setBuildingIndex(true);
             setNeedsNewIndex(false);
-            setShowStoryButton(false);
 
             const result = await fetch("/api/splitandembed", {
               method: "POST",
@@ -174,11 +169,10 @@ export default function Home() {
           <>
             <Button
               className="my-4"
-              disabled={extracting || generating}
+              disabled={extracting}
               onClick={async () => {
                 setAnswer("Extracting characters...");
                 setExtracting(true);
-                setShowStoryButton(false);
 
                 const result = await fetch("/api/extractcharacters", {
                   method: "POST",
@@ -199,9 +193,7 @@ export default function Home() {
                 }
 
                 if (payload && payload.characters) {
-                  setExtractedCharacters(payload.characters);
                   setAnswer(formatCharactersAsTable(payload.characters));
-                  setShowStoryButton(true);
                 }
 
                 setExtracting(false);
@@ -210,45 +202,8 @@ export default function Home() {
               Extract Characters
             </Button>
 
-            {showStoryButton && (
-              <Button
-                className="my-4"
-                disabled={generating}
-                onClick={async () => {
-                  setGenerating(true);
-                  setAnswer("Generating story...");
-
-                  const result = await fetch("/api/generatestory", {
-                    method: "POST",
-                    headers: {
-                      "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                      characters: extractedCharacters,
-                      temperature: parseFloat(temperature),
-                      topP: parseFloat(topP),
-                    }),
-                  });
-
-                  const { error, payload } = await result.json();
-
-                  if (error) {
-                    setAnswer(error);
-                  }
-
-                  if (payload) {
-                    setAnswer(payload.story);
-                  }
-
-                  setGenerating(false);
-                }}
-              >
-                Generate Story
-              </Button>
-            )}
-
             <div className="my-2 flex h-1/4 flex-auto flex-col space-y-2">
-              <Label htmlFor={answerId}>Output:</Label>
+              <Label htmlFor={answerId}>Characters:</Label>
               <Textarea
                 className="flex-1 font-mono"
                 readOnly
